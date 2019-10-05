@@ -1,30 +1,55 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"log"
 	"os"
-
-	"gopkg.in/src-d/go-git.v4"
-	. "gopkg.in/src-d/go-git.v4/_examples"
+	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
+var SharedPaths []string = []string{
+	"shared/",
+}
+
 func main() {
-	Info("git remotes")
+	cmd := exec.Command("git", "--no-pager", "diff", "--name-only", "HEAD..master")
 
-	// git.PlainOpen(path/to/.git)
-	cwd, err := os.Getwd()
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
 	if err != nil {
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
-	gitPath := fmt.Sprintf("%s/.git", cwd)
-	repo, err := git.PlainOpen(gitPath)
-	CheckIfError(err)
+	files := strings.Split(out.String(), "\n")
+	possibleConflicts := []string{}
 
-	remotes, err := repo.Remotes()
-	CheckIfError(err)
+	for _, sharedPath := range SharedPaths {
+		filepath.Walk(sharedPath, func(path string, info os.FileInfo, err error) error {
+			if !info.IsDir() && exists(files, path) {
+				possibleConflicts = append(possibleConflicts, path)
+			}
 
-	for _, remote := range remotes {
-		fmt.Println(remote.String())
+			return nil
+		})
 	}
+
+	fmt.Println("Possible conflicts:")
+
+	for _, conflict := range possibleConflicts {
+		fmt.Println(conflict)
+	}
+}
+
+func exists(slc []string, el string) bool {
+	for _, slcEl := range slc {
+		if el == slcEl {
+			return true
+		}
+	}
+
+	return false
 }
