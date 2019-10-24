@@ -3,7 +3,7 @@ package interferon
 import (
 	"bytes"
 	"io/ioutil"
-	"os"
+	"log"
 	"os/exec"
 	"strings"
 )
@@ -11,6 +11,8 @@ import (
 // read from .interfere
 // run a git diff
 // see if the item exists
+
+var execCommand = exec.Command
 
 func ReadFile(path string) ([]string, error) {
 	data, err := ioutil.ReadFile(path)
@@ -26,8 +28,18 @@ func ReadFile(path string) ([]string, error) {
 }
 
 func DiffMaster() ([]string, error) {
-	cmd := exec.Cmd("git", "--no-pager", "diff", "--name-only", "HEAD..master")
-	err := cmd.Run
+	cmd := execCommand("git", "--no-pager", "diff", "--name-only", "HEAD..master")
+
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	files := strings.Split(out.String(), "\n")
+
+	return files, nil
 }
 
 func compact(slice []string) []string {
